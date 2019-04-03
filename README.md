@@ -1,0 +1,2 @@
+# trainingRikkei
+trainingRikkei

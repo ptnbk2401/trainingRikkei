@@ -19,8 +19,12 @@ Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
 Route::namespace('Admin')->middleware('auth')->group(function () {
-	// Route::post('/post/edit/{id}', 'PostIndexController@update')->name('post.pedit');
-	// Route::get('/post/del/{id}', 'PostIndexController@destroy')->name('post.del');
+	Route::get('/', [
+        'uses' => 'IndexController@index',
+        'as' => 'admin.index.index'
+    ]);
 	Route::get('/post/search', 'PostIndexController@search')->name('post.search');
 	Route::resource('post', 'PostIndexController');
+    
 });
+

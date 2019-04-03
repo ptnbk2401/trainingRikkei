@@ -11,6 +11,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        // $this->call(UsersTableSeeder::class);
+        $this->call(PostTableSeeder::class);
+        $this->call(CatTableSeeder::class);
     }
+}
+
+Class CatTableSeeder extends Seeder 
+{
+	public function run()
+    {
+        DB::table('cats')->insert([
+            ['cname' => 'Giải Trí'],
+            ['cname' => 'Thời Sự'],
+            ['cname' => 'Thể Thao'],
+        ]);
+    }
+	
 }

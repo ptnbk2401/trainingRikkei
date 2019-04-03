@@ -167,6 +167,9 @@ return [
          */
         Nayjest\Grids\ServiceProvider::class,
         Collective\Html\HtmlServiceProvider::class,
+        Maatwebsite\Excel\ExcelServiceProvider::class,
+
+
 
         /*
          * Application Service Providers...
@@ -232,7 +235,7 @@ return [
         'Form'  => Collective\Html\FormFacade::class,
         'HTML'  => Collective\Html\HtmlFacade::class,
         'Grids'     => Nayjest\Grids\Grids::class,
-
+        'Excel' => Maatwebsite\Excel\Facades\Excel::class,
     ],
 
 ];

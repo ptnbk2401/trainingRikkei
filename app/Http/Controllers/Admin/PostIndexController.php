@@ -5,11 +5,34 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PostRequest;
 use App\Model\Post\PostIndex;
+use Grids;
+use HTML;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Storage;
-use Grids;
-use HTML;
+use Illuminate\Support\Facades\Config;
+use Nayjest\Grids\Components\Base\RenderableRegistry;
+use Nayjest\Grids\Components\ColumnHeadersRow;
+use Nayjest\Grids\Components\ColumnsHider;
+use Nayjest\Grids\Components\CsvExport;
+use Nayjest\Grids\Components\ExcelExport;
+use Nayjest\Grids\Components\Filters\DateRangePicker;
+use Nayjest\Grids\Components\FiltersRow;
+use Nayjest\Grids\Components\HtmlTag;
+use Nayjest\Grids\Components\Laravel5\Pager;
+use Nayjest\Grids\Components\OneCellRow;
+use Nayjest\Grids\Components\RecordsPerPage;
+use Nayjest\Grids\Components\RenderFunc;
+use Nayjest\Grids\Components\ShowingRecords;
+use Nayjest\Grids\Components\TFoot;
+use Nayjest\Grids\Components\THead;
+use Nayjest\Grids\Components\TotalsRow;
+use Nayjest\Grids\DbalDataProvider;
+use Nayjest\Grids\EloquentDataProvider;
+use Nayjest\Grids\FieldConfig;
+use Nayjest\Grids\FilterConfig;
+use Nayjest\Grids\Grid;
+use Nayjest\Grids\GridConfig;
 
 class PostIndexController extends Controller
 {
@@ -25,21 +48,147 @@ class PostIndexController extends Controller
 
     public function index()
     {
-        $cfg = [
-            'src' => 'App\Model\Post\PostIndex',
-            'columns' => [
-                'id',
-                'name',
+        $query = \DB::getDoctrineConnection()->createQueryBuilder();
+        $query
+            ->select([
+                'p.id',
+                'pname',
+                'cname',
+                'picture',
+                'cat_id',
                 'preview_text',
-                'created_at'
-            ]
-        ];
-        $grid = Grids::make($cfg);
-        echo $grid;
-        dd($grid);
+            ])
+            ->from("posts","p")
+            ->join("p","cats","c","p.cat_id = c.cid");
+        $cfg = (new GridConfig())
+            ->setDataProvider(
+                new DbalDataProvider($query)
+            )
+            ->setPageSize(5)
+            ->setColumns([
+                (new FieldConfig)
+                    ->setName('id')
+                    ->setLabel('ID')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('id')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
 
+                ,
+                (new FieldConfig)
+                    ->setName('pname')
+                    ->setLabel('Bài viết')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('pname')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
+                ,
+                (new FieldConfig)
+                    ->setName('cname')
+                    ->setLabel('Danh mục')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('cname')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
+                ,
+                (new FieldConfig)
+                    ->setName('picture')
+                    ->setLabel('Hình ảnh')
+                    ->setCallback(function ($val) {
+                        return "<img src='".asset('/storage/media/files/posts/' .$val)."' style='width: 110px; height: 80px'>";
+                    })                    
+                ,
+                (new FieldConfig)
+                    ->setName('preview_text')
+                    ->setLabel('Mô tả')
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
+                ,
+                // (new FieldConfig)
+                //     ->setName('created_at')
+                //     ->setLabel('Ngày tạo')
+                //     ->setSortable(true)
+                //     ->setSorting(Grid::SORT_ASC)
+                //     ->setCallback(function ($val) {
+                //         return date('M, d-Y',strtotime($val));
+                //     })  
+                // ,
+                (new FieldConfig)
+                    ->setName('id')
+                    ->setLabel('Action')
+                    ->setCallback(function ($val) {
+                        $html = '<form action=" '.route('post.edit',$val).' " method="get" style="display: inline;" >
+                            <button class="btn btn-primary" type="submit" ><i style="font-size:20px" class="material-icons">edit</i></button>
+                        </form>
+                        <form action="'. route('post.destroy',$val).'" method="post" style="display: inline;">
+                            '.csrf_field().'
+                            <input type="hidden" name="_method" value="DELETE"> 
+                            <button class="btn btn-danger" type="submit" onclick="return confirm(\'Bạn có chắc muốn xóa?\') "><i style="font-size:20px" class="material-icons">delete</i></button>
+                        </form>';
+                        return $html;
+                    }) 
+                ,
+                
+            ])
+
+            ->setComponents([
+                (new THead)
+                    ->getComponentByName(FiltersRow::NAME)
+                    ->getParent()
+                    ->setComponents([
+                        (new ColumnHeadersRow),
+                        (new FiltersRow),
+                        (new OneCellRow)
+                            ->setRenderSection(RenderableRegistry::SECTION_END)
+                            ->setComponents([
+                                // new RecordsPerPage,
+                                (new HtmlTag)
+                                    ->setContent('<span class="glyphicon glyphicon-refresh"></span> Filter ')
+                                    ->setTagName('button')
+                                    ->setRenderSection(RenderableRegistry::SECTION_END)
+                                    ->setAttributes([
+                                        'class' => 'btn btn-success '
+                                    ]), 
+                                (new HtmlTag)
+                                    ->setContent(' <span class="glyphicon glyphicon-plus"></span> Add ')
+                                    ->setTagName('button')
+                                    ->setRenderSection(RenderableRegistry::SECTION_END)
+                                    ->setAttributes([
+                                        'type' => 'submit',
+                                        'form' => 'form-create',
+                                        'class' => 'btn btn-info btn-add '
+                                    ]),
+                            ])
+                    ])
+                ,
+                
+                (new TFoot)
+                ->setComponents([
+                    (new OneCellRow)
+                        ->setComponents([
+                            new Pager,
+                            (new HtmlTag)
+                                ->setAttributes(['class' => 'pull-right'])
+                                ->addComponent(new ShowingRecords)
+                            ,
+                        ])
+                ])
+            
+            ]);
+        $grid = (new Grid($cfg))->render();
         $objItems = $this->objmPost->getItems();
-        return view('public.post.index',compact('objItems'));
+        return view('admin.post.index',compact('objItems','grid'));
     }
 
     /**
@@ -49,7 +198,7 @@ class PostIndexController extends Controller
      */
     public function create()
     {
-        return  view('public.post.add');
+        return  view('admin.post.add');
     }
 
     /**
@@ -89,7 +238,7 @@ class PostIndexController extends Controller
     public function show($id)
     {
         $objItem = PostIndex::find($id);
-        return  view('public.post.detail',compact('objItem'));
+        return  view('admin.post.detail',compact('objItem'));
     }
 
     /**
@@ -101,7 +250,7 @@ class PostIndexController extends Controller
     public function edit($id)
     {
         $old_item = PostIndex::find($id);
-        return  view('public.post.edit',compact('old_item'));
+        return  view('admin.post.edit',compact('old_item'));
     }
 
     /**
@@ -164,111 +313,136 @@ class PostIndexController extends Controller
         }
         
     }
-    public function getGrid()
+    public function getGrid($query)
     {
-        // country selected filter
-        $nameFilterPost = 'byPostId';
-        $listPost = PostIndex::selectRaw('id, pname as label')->get()->toArray();
-        $listPostSelected = [];
-        if ($cityId = (int)\request()->get($nameFilterPost)) {
-            /** @var PostIndex $model */
-            $model = PostIndex::find($cityId);
-            $listPostSelected = [
-                'label' => $model->name,
-                'id'    => $model->id,
-            ];
-        }        
-        // columns
-        $gridView = app(\Assurrussa\GridView\GridView::NAME);
-        $gridView->column('id', '#')->setSort(true)->setFilterString('byId', '', '', 'width:60px');
-        $gridView->column()->setCheckbox();
-        $gridView->column('pname', 'pname')->setFilterString('byTitleLike', '', '', 'width:60px')->setSort(true);
-        $gridView->column('preview_text', 'preview_text')->setScreening(true)->setHandler(function ($data) {
-            /** @var \App\Post $data */
-            return '<img src="' . $data->preview_text . '" alt="' . $data->pname . '" widht="60" height="60">';
-        });
-        $gridView->column('created_at', 'Created At')->setDateActive(true)
-            ->setFilterDate('byCreatedAt', '', true, 'Y-m-d H:i')
-            ->setFilterFormat('DD MMM YY');
-        // column actions
-        $gridView->columnActions(function ($data, $columns) {
-            /**
-             * @var \App\Post                           $data
-             * @var \Assurrussa\GridView\Support\Column $columns
-             */
-            $columns->addButton()->setActionShow('post.show', [$data->id])
-                ->setClass('btn btn-info btn-sm')
-                ->setOptions(['target' => '_blank'])
-                ->setHandler(function ($data) {
-                    /** @var \App\Post $data */
-                    return $data->id % 2;
-                });
-            $columns->addButton()->setActionEdit('post.edit', [$data->id], 'Edit')
-                ->setClass('btn btn-outline-primary btn-sm')
-                ->setOptions(['target' => '_blank'])
-                ->setHandler(function ($data) {
-                    /** @var \App\Post $data */
-                    return $data->id % 2;
-                });
-            $columns->addButton()->setActionDelete('post.destroy', [$data->id], '')
-                ->setHandler(function ($data) {
-                    /** @var \App\Post $data */
-                    return $data->id % 2 && !$data->deleted_at;
-                });
-            $columns->addButton()->setActionRestore('post.restore', [$data->id])
-                ->setMethod('PUT')->setHandler(function ($data) {
-                    /** @var \App\Post $data */
-                    return $data->deleted_at;
-                });
-        });
-//        // column actions
-//        $gridView->columnActions(function ($data) use ($gridView) {
-//            /** @var \App\Post $data */
-//            $buttons = [];
-//            $buttons[] = $gridView->columnAction()->setActionShow('post.show', [$data->id])
-//                ->setClass('btn btn-info btn-sm')
-//                ->setOptions(['target' => '_blank'])
-//                ->setHandler(function ($data) {
-//                    /** @var \App\Post $data */
-//                    return $data->id % 2;
-//                });
-//            $buttons[] = $gridView->columnAction()->setActionEdit('post.edit', [$data->id], 'Edit')
-//                ->setClass('btn btn-outline-primary btn-sm')
-//                ->setOptions(['target' => '_blank'])
-//                ->setHandler(function ($data) {
-//                    /** @var \App\Post $data */
-//                    return $data->id % 2;
-//                });
-//            $buttons[] = $gridView->columnAction()->setActionDelete('post.destroy', [$data->id], '')
-//                ->setHandler(function ($data) {
-//                    /** @var \App\Post $data */
-//                    return $data->id % 2 && !$data->deleted_at;
-//                });
-//            $buttons[] = $gridView->columnAction()->setActionRestore('post.restore', [$data->id])
-//                ->setMethod('PUT')->setHandler(function ($data) {
-//                    /** @var \App\Post $data */
-//                    return $data->deleted_at;
-//                });
-//            return $buttons;
-//        });
-        // create button
-        $gridView->button()->setButtonCreate(route('post.create'));
-        // create custom button
-        // $gridView->button()->setButtonCheckboxAction(route('post.custom'), '?custom=');
-        return $gridView;
-    }
-    private function _getGridView()
-    {
-        /** @var \Assurrussa\GridView\GridView $gridView */
-        $query = $this->objmPost->newQuery();
-        $gridView = app('amiGrid');
-        $gridView->setQuery($query)
-            ->setSearchInput(true);
+        $cfg = (new GridConfig())
+            ->setDataProvider(
+                new DbalDataProvider($query)
+            )
+            ->setPageSize(5)
+            ->setColumns([
+                (new FieldConfig)
+                    ->setName('p.id')
+                    ->setLabel('ID')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('p.id')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
 
-        // .......
-        // .......
-        // .......
+                ,
+                (new FieldConfig)
+                    ->setName('pname')
+                    ->setLabel('Bài viết')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('pname')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
+                ,
+                (new FieldConfig)
+                    ->setName('cname')
+                    ->setLabel('Danh mục')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('cname')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
+                ,
+                (new FieldConfig)
+                    ->setName('picture')
+                    ->setLabel('Hình ảnh')
+                    ->setCallback(function ($val) {
+                        return "<img src='".asset('/storage/media/files/posts/' .$val)."' style='width: 110px; height: 80px'>";
+                    })                    
+                ,
+                (new FieldConfig)
+                    ->setName('preview_text')
+                    ->setLabel('Mô tả')
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
+                ,
+                // (new FieldConfig)
+                //     ->setName('created_at')
+                //     ->setLabel('Ngày tạo')
+                //     ->setSortable(true)
+                //     ->setSorting(Grid::SORT_ASC)
+                //     ->setCallback(function ($val) {
+                //         return date('M, d-Y',strtotime($val));
+                //     })  
+                // ,
+                (new FieldConfig)
+                    ->setName('p.id')
+                    ->setLabel('Action')
+                    ->setCallback(function ($val) {
+                        $html = '<form action=" '.route('post.edit',$val).' " method="get" style="display: inline;" >
+                            <button class="btn btn-primary" type="submit" ><i style="font-size:20px" class="material-icons">edit</i></button>
+                        </form>
+                        <form action="'. route('post.destroy',$val).'" method="post" style="display: inline;">
+                            '.csrf_field().'
+                            <input type="hidden" name="_method" value="DELETE"> 
+                            <button class="btn btn-danger" type="submit" onclick="return confirm(\'Bạn có chắc muốn xóa?\') "><i style="font-size:20px" class="material-icons">delete</i></button>
+                        </form>';
+                        return $html;
+                    }) 
+                ,
+                
+            ])
 
-        return $gridView;
+            ->setComponents([
+                (new THead)
+                    ->getComponentByName(FiltersRow::NAME)
+                    ->getParent()
+                    ->setComponents([
+                        (new ColumnHeadersRow),
+                        (new FiltersRow),
+                        (new OneCellRow)
+                            ->setRenderSection(RenderableRegistry::SECTION_END)
+                            ->setComponents([
+                                // new RecordsPerPage,
+                                (new HtmlTag)
+                                    ->setContent('<span class="glyphicon glyphicon-refresh"></span> Filter ')
+                                    ->setTagName('button')
+                                    ->setRenderSection(RenderableRegistry::SECTION_END)
+                                    ->setAttributes([
+                                        'class' => 'btn btn-success '
+                                    ]), 
+                                (new HtmlTag)
+                                    ->setContent(' <span class="glyphicon glyphicon-plus"></span> Add ')
+                                    ->setTagName('button')
+                                    ->setRenderSection(RenderableRegistry::SECTION_END)
+                                    ->setAttributes([
+                                        'type' => 'submit',
+                                        'form' => 'form-create',
+                                        'class' => 'btn btn-info btn-add '
+                                    ]),
+                            ])
+                    ])
+                ,
+                
+                (new TFoot)
+                ->setComponents([
+                    (new OneCellRow)
+                        ->setComponents([
+                            new Pager,
+                            (new HtmlTag)
+                                ->setAttributes(['class' => 'pull-right'])
+                                ->addComponent(new ShowingRecords)
+                            ,
+                        ])
+                ])
+            
+            ]);
+        $grid = (new Grid($cfg))->render();
+        return $grid;
     }
+    
 }

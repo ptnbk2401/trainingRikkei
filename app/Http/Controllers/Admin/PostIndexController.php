@@ -51,142 +51,18 @@ class PostIndexController extends Controller
         $query = \DB::getDoctrineConnection()->createQueryBuilder();
         $query
             ->select([
-                'p.id',
-                'pname',
-                'cname',
+                'p.id as pid',
+                'title',
                 'picture',
-                'cat_id',
+                'name',
                 'preview_text',
+                'status',
             ])
             ->from("posts","p")
-            ->join("p","cats","c","p.cat_id = c.cid");
-        $cfg = (new GridConfig())
-            ->setDataProvider(
-                new DbalDataProvider($query)
-            )
-            ->setPageSize(5)
-            ->setColumns([
-                (new FieldConfig)
-                    ->setName('id')
-                    ->setLabel('ID')
-                    ->setSortable(true)
-                    ->setSorting(Grid::SORT_ASC)
-                    ->addFilter(
-                        (new FilterConfig)
-                            ->setName('id')
-                            ->setOperator(FilterConfig::OPERATOR_LIKE)
-                    )
-
-                ,
-                (new FieldConfig)
-                    ->setName('pname')
-                    ->setLabel('Bài viết')
-                    ->setSortable(true)
-                    ->setSorting(Grid::SORT_ASC)
-                    ->addFilter(
-                        (new FilterConfig)
-                            ->setName('pname')
-                            ->setOperator(FilterConfig::OPERATOR_LIKE)
-                    )
-                ,
-                (new FieldConfig)
-                    ->setName('cname')
-                    ->setLabel('Danh mục')
-                    ->setSortable(true)
-                    ->setSorting(Grid::SORT_ASC)
-                    ->addFilter(
-                        (new FilterConfig)
-                            ->setName('cname')
-                            ->setOperator(FilterConfig::OPERATOR_LIKE)
-                    )
-                ,
-                (new FieldConfig)
-                    ->setName('picture')
-                    ->setLabel('Hình ảnh')
-                    ->setCallback(function ($val) {
-                        return "<img src='".asset('/storage/media/files/posts/' .$val)."' style='width: 110px; height: 80px'>";
-                    })                    
-                ,
-                (new FieldConfig)
-                    ->setName('preview_text')
-                    ->setLabel('Mô tả')
-                    ->addFilter(
-                        (new FilterConfig)
-                            ->setOperator(FilterConfig::OPERATOR_LIKE)
-                    )
-                ,
-                // (new FieldConfig)
-                //     ->setName('created_at')
-                //     ->setLabel('Ngày tạo')
-                //     ->setSortable(true)
-                //     ->setSorting(Grid::SORT_ASC)
-                //     ->setCallback(function ($val) {
-                //         return date('M, d-Y',strtotime($val));
-                //     })  
-                // ,
-                (new FieldConfig)
-                    ->setName('id')
-                    ->setLabel('Action')
-                    ->setCallback(function ($val) {
-                        $html = '<form action=" '.route('post.edit',$val).' " method="get" style="display: inline;" >
-                            <button class="btn btn-primary" type="submit" ><i style="font-size:20px" class="material-icons">edit</i></button>
-                        </form>
-                        <form action="'. route('post.destroy',$val).'" method="post" style="display: inline;">
-                            '.csrf_field().'
-                            <input type="hidden" name="_method" value="DELETE"> 
-                            <button class="btn btn-danger" type="submit" onclick="return confirm(\'Bạn có chắc muốn xóa?\') "><i style="font-size:20px" class="material-icons">delete</i></button>
-                        </form>';
-                        return $html;
-                    }) 
-                ,
-                
-            ])
-
-            ->setComponents([
-                (new THead)
-                    ->getComponentByName(FiltersRow::NAME)
-                    ->getParent()
-                    ->setComponents([
-                        (new ColumnHeadersRow),
-                        (new FiltersRow),
-                        (new OneCellRow)
-                            ->setRenderSection(RenderableRegistry::SECTION_END)
-                            ->setComponents([
-                                // new RecordsPerPage,
-                                (new HtmlTag)
-                                    ->setContent('<span class="glyphicon glyphicon-refresh"></span> Filter ')
-                                    ->setTagName('button')
-                                    ->setRenderSection(RenderableRegistry::SECTION_END)
-                                    ->setAttributes([
-                                        'class' => 'btn btn-success '
-                                    ]), 
-                                (new HtmlTag)
-                                    ->setContent(' <span class="glyphicon glyphicon-plus"></span> Add ')
-                                    ->setTagName('button')
-                                    ->setRenderSection(RenderableRegistry::SECTION_END)
-                                    ->setAttributes([
-                                        'type' => 'submit',
-                                        'form' => 'form-create',
-                                        'class' => 'btn btn-info btn-add '
-                                    ]),
-                            ])
-                    ])
-                ,
-                
-                (new TFoot)
-                ->setComponents([
-                    (new OneCellRow)
-                        ->setComponents([
-                            new Pager,
-                            (new HtmlTag)
-                                ->setAttributes(['class' => 'pull-right'])
-                                ->addComponent(new ShowingRecords)
-                            ,
-                        ])
-                ])
-            
-            ]);
-        $grid = (new Grid($cfg))->render();
+            ->join("p","post_category","pc","p.id = pc.post_id")        
+            ->join("pc","categories","c","pc.cat_id = c.id")
+            ->groupby('p.id');        
+        $grid =  $this->getGrid($query);
         $objItems = $this->objmPost->getItems();
         return view('admin.post.index',compact('objItems','grid'));
     }
@@ -210,7 +86,7 @@ class PostIndexController extends Controller
     public function store(PostRequest $request)
     {
         $arItem = [
-            'pname' => trim($request->name),
+            'title' => trim($request->name),
             'preview_text' => trim($request->preview_text),
             'cat_id' => trim($request->cat_id)
         ];
@@ -264,7 +140,7 @@ class PostIndexController extends Controller
     {
         $objItemOld = PostIndex::find($id);
         $arItem = [
-            'pname' => trim($request->name),
+            'title' => trim($request->name),
             'preview_text' => trim($request->preview_text),
             'cat_id' => trim($request->cat_id)
         ];
@@ -315,14 +191,16 @@ class PostIndexController extends Controller
     }
     public function getGrid($query)
     {
+        $query;
+        // dd($query);
         $cfg = (new GridConfig())
             ->setDataProvider(
                 new DbalDataProvider($query)
             )
-            ->setPageSize(5)
+            ->setPageSize(10)
             ->setColumns([
                 (new FieldConfig)
-                    ->setName('p.id')
+                    ->setName('pid')
                     ->setLabel('ID')
                     ->setSortable(true)
                     ->setSorting(Grid::SORT_ASC)
@@ -334,26 +212,30 @@ class PostIndexController extends Controller
 
                 ,
                 (new FieldConfig)
-                    ->setName('pname')
+                    ->setName('title')
                     ->setLabel('Bài viết')
                     ->setSortable(true)
+                    ->setWidth('300px')
                     ->setSorting(Grid::SORT_ASC)
                     ->addFilter(
                         (new FilterConfig)
-                            ->setName('pname')
+                            ->setName('title')
                             ->setOperator(FilterConfig::OPERATOR_LIKE)
                     )
                 ,
+                
                 (new FieldConfig)
-                    ->setName('cname')
+                    ->setName('pid')
                     ->setLabel('Danh mục')
-                    ->setSortable(true)
-                    ->setSorting(Grid::SORT_ASC)
+                    ->setCallback(function ($val) {
+                        $cat = $this->getCategory($val);
+                        return '<p>'.$cat.'</p>';
+                    })
                     ->addFilter(
                         (new FilterConfig)
-                            ->setName('cname')
+                            ->setName('name')
                             ->setOperator(FilterConfig::OPERATOR_LIKE)
-                    )
+                    )                    
                 ,
                 (new FieldConfig)
                     ->setName('picture')
@@ -370,27 +252,24 @@ class PostIndexController extends Controller
                             ->setOperator(FilterConfig::OPERATOR_LIKE)
                     )
                 ,
-                // (new FieldConfig)
-                //     ->setName('created_at')
-                //     ->setLabel('Ngày tạo')
-                //     ->setSortable(true)
-                //     ->setSorting(Grid::SORT_ASC)
-                //     ->setCallback(function ($val) {
-                //         return date('M, d-Y',strtotime($val));
-                //     })  
-                // ,
                 (new FieldConfig)
-                    ->setName('p.id')
-                    ->setLabel('Action')
+                    ->setName('status')
+                    ->setWidth('130px')
+                    ->setLabel('Trạng thái')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
                     ->setCallback(function ($val) {
-                        $html = '<form action=" '.route('post.edit',$val).' " method="get" style="display: inline;" >
-                            <button class="btn btn-primary" type="submit" ><i style="font-size:20px" class="material-icons">edit</i></button>
-                        </form>
-                        <form action="'. route('post.destroy',$val).'" method="post" style="display: inline;">
-                            '.csrf_field().'
-                            <input type="hidden" name="_method" value="DELETE"> 
-                            <button class="btn btn-danger" type="submit" onclick="return confirm(\'Bạn có chắc muốn xóa?\') "><i style="font-size:20px" class="material-icons">delete</i></button>
-                        </form>';
+                        $html = !empty($val)? '<a href="javascript:void(0)"><i class="fa fa-fw fa-check-circle" style="font-size: 20px; color: green"></i></a>' : '<a href="javascript:void(0)"><i class="fa fa-fw fa-times-circle" style="font-size: 20px; color: red"></i></a>';
+                        return $html;
+                    })  
+                ,
+                (new FieldConfig)
+                    ->setName('pid')
+                    ->setLabel('Action')
+                    ->setWidth('130px')
+                    ->setCallback(function ($val) {
+                        $html = '<a href=" '.route('post.edit',$val).' " class="btn btn-info" ><i class="fa fa-fw fa-pencil-square"></i></a>
+                            <a class="btn btn-danger" href="javascript:void(0)"  onclick="deletePost('.$val.')"><i class="fa fa-fw fa-trash"></i></a>';
                         return $html;
                     }) 
                 ,
@@ -407,13 +286,16 @@ class PostIndexController extends Controller
                         (new OneCellRow)
                             ->setRenderSection(RenderableRegistry::SECTION_END)
                             ->setComponents([
-                                // new RecordsPerPage,
+                                (new RecordsPerPage)
+                                    ->setVariants([10,20,50,100])
+                                ,
                                 (new HtmlTag)
                                     ->setContent('<span class="glyphicon glyphicon-refresh"></span> Filter ')
                                     ->setTagName('button')
                                     ->setRenderSection(RenderableRegistry::SECTION_END)
                                     ->setAttributes([
-                                        'class' => 'btn btn-success '
+                                        'class' => 'btn btn-success ',
+                                        'style' => 'margin: 0 10px'
                                     ]), 
                                 (new HtmlTag)
                                     ->setContent(' <span class="glyphicon glyphicon-plus"></span> Add ')
@@ -422,7 +304,8 @@ class PostIndexController extends Controller
                                     ->setAttributes([
                                         'type' => 'submit',
                                         'form' => 'form-create',
-                                        'class' => 'btn btn-info btn-add '
+                                        'class' => 'btn btn-info',
+                                        'style' => 'margin: 0 10px'
                                     ]),
                             ])
                     ])
@@ -445,4 +328,11 @@ class PostIndexController extends Controller
         return $grid;
     }
     
+    public function getCategory($post_id){
+        $post = PostIndex::find($post_id);
+        foreach ($post->categories as $category) {
+            $arCat[] = $category->name;
+        }
+        return !empty($arCat)? implode(',', $arCat) : ''; 
+    }
 }

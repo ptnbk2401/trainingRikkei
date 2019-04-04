@@ -36,4 +36,9 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function groups()
+    {
+        return $this->belongsToMany('App\Model\User\GroupIndex', 'user_group', 'user_id', 'group_id');
+    }
 }

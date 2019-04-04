@@ -10,10 +10,11 @@ $factory->define(PostIndex::class, function (Faker $faker) {
         Storage::makeDirectory($filepath);
     }
     return [
-        'pname' => $faker->text,
+        'title' => $faker->text($maxNbChars = 200),
         'preview_text' => $faker->text,
-        'cat_id' => $faker->numberBetween($min = 1, $max = 3) ,
+        'content' => $faker->realText,
         'picture' => $faker->image($filepath,400,300,null,false),
         'created_at' => new DateTime,
+        'updated_at' => new DateTime,
     ];
 });

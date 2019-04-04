@@ -69,6 +69,15 @@
                 <div class="top-right links">
                     @auth
                         <a href="{{ url('/home') }}">Home</a>
+                        <a class="dropdown-item" href="{{ route('logout') }}"
+                           onclick="event.preventDefault();
+                                         document.getElementById('logout-form').submit();">
+                            {{ __('Logout') }}
+                        </a>
+
+                        <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                            @csrf
+                        </form>
                     @else
                         <a href="{{ route('login') }}">Login</a>
 
@@ -83,9 +92,15 @@
                 <div class="title m-b-md">
                     My Project
                 </div>
-
+                @if (session('msg'))
+                    <div class="alert alert-danger">
+                        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                        <strong>Note!</strong> {{ session('msg') }}
+                    </div>
+                @endif
+                
                 <div class="links">
-                    <a href="{{ route('post.index') }}">Bài Viết</a>
+                    <a href="">Bài Viết</a>
                 </div>
             </div>
         </div>

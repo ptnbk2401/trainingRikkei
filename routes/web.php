@@ -16,15 +16,18 @@ Route::get('/', function () {
 });
 
 Auth::routes();
+Route::get('/home', 'HomeController@index')->name('home')->middleware('roleauth:admin|editor');
 
-Route::get('/home', 'HomeController@index')->name('home');
-Route::namespace('Admin')->middleware('auth')->group(function () {
+
+Route::namespace('Admin')->prefix('admin')->group(function () {
 	Route::get('/', [
         'uses' => 'IndexController@index',
         'as' => 'admin.index.index'
     ]);
 	Route::get('/post/search', 'PostIndexController@search')->name('post.search');
 	Route::resource('post', 'PostIndexController');
-    
+    Route::resource('cat', 'CategoryController');
+    Route::get('/cat/search', 'CategoryController@search')->name('cat.search');
 });
+
 

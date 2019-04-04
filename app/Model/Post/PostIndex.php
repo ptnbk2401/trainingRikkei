@@ -9,14 +9,18 @@ class PostIndex extends Model
 {
     protected $table = "posts";
     protected $primaryKey = "id";
-    public    $timestamps = false;
+    // public    $timestamps = false;
 
+
+    public function categories() {
+        return $this->belongsToMany('App\Model\Category\Category', 'post_category','post_id', 'cat_id');
+    }
     public function getItems() {
         return PostIndex::orderBy('id', 'DESC')
             ->paginate(3);
     }
     public function getItemsBySearch($search) {
-        return PostIndex::where('pname','like','%'.$search.'%')
+        return PostIndex::where('title','like','%'.$search.'%')
         	->orWhere('preview_text','like','%'.$search.'%')
         	->orderBy('id', 'DESC')
             ->paginate(3);

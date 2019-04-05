@@ -16,5 +16,6 @@ $factory->define(PostIndex::class, function (Faker $faker) {
         'picture' => $faker->image($filepath,400,300,null,false),
         'created_at' => new DateTime,
         'updated_at' => new DateTime,
+        'user_id' => 1,
     ];
 });

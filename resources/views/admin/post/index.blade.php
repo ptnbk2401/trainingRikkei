@@ -6,6 +6,9 @@
         table th,.column-pid,.column-status {
             text-align: center;
         }
+        th.column-pid:last-child {
+            width: 130px;
+        }
     </style>
 @stop
 @section('content_header')
@@ -69,5 +72,7 @@
         return false;
         // alert(tags);
     }
+
+
 </script>
 @stop

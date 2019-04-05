@@ -272,7 +272,6 @@ class PostIndexController extends Controller
                     ->setName('title')
                     ->setLabel('Bài viết')
                     ->setSortable(true)
-                    ->setWidth('300px')
                     ->setSorting(Grid::SORT_ASC)
                     ->addFilter(
                         (new FilterConfig)
@@ -297,7 +296,6 @@ class PostIndexController extends Controller
                 ,
                 (new FieldConfig)
                     ->setName('tag')
-                    ->setWidth('130px')
                     ->setLabel('Tags')
                     ->setSortable(true)
                     ->setSorting(Grid::SORT_ASC)
@@ -338,7 +336,6 @@ class PostIndexController extends Controller
                 ,
                 (new FieldConfig)
                     ->setName('status')
-                    ->setWidth('130px')
                     ->setLabel('Trạng thái')
                     ->setSortable(true)
                     ->setSorting(Grid::SORT_ASC)
@@ -351,7 +348,6 @@ class PostIndexController extends Controller
                 (new FieldConfig)
                     ->setName('pid')
                     ->setLabel('Action')
-                    ->setWidth('130px')
                     ->setCallback(function ($val) {
                         $html = '<a href=" '.route('post.edit',$val).' " class="btn btn-info" ><i class="fa fa-fw fa-pencil-square"></i></a>
                             <a class="btn btn-danger" href="javascript:void(0)"  onclick="deletePost('.$val.')"><i class="fa fa-fw fa-trash"></i></a>';

@@ -16,7 +16,7 @@ class Category extends Model
     }
 
     public function getItems() {
-        return Category::orderBy('id', 'DESC')
+        return Category::orderBy('sort', 'DESC')->orderBy('id', 'DESC')
             ->paginate(10);
     }
     public function addItem($arItem) {
@@ -27,6 +27,13 @@ class Category extends Model
     }
     public function delItem($id) {
         return Category::whereId($id)->delete();
+    }
+
+    public function getItemsBySearch($search) {
+        return Category::where('name','like','%'.$search.'%')
+            ->orderBy('sort', 'DESC')
+            ->orderBy('id', 'DESC')
+            ->paginate(10);
     }
 
 }

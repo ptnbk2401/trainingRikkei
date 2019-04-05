@@ -4,20 +4,25 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PostRequest;
+use App\Model\Category\Category;
+use App\Model\PostCategory\PostCategoryIndex;
+use App\Model\PostTag\PostTagIndex;
 use App\Model\Post\PostIndex;
+use App\Model\Tags\TagsIndex;
 use Grids;
 use HTML;
+use Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Config;
 use Nayjest\Grids\Components\Base\RenderableRegistry;
 use Nayjest\Grids\Components\ColumnHeadersRow;
 use Nayjest\Grids\Components\ColumnsHider;
 use Nayjest\Grids\Components\CsvExport;
 use Nayjest\Grids\Components\ExcelExport;
-use Nayjest\Grids\Components\Filters\DateRangePicker;
 use Nayjest\Grids\Components\FiltersRow;
+use Nayjest\Grids\Components\Filters\DateRangePicker;
 use Nayjest\Grids\Components\HtmlTag;
 use Nayjest\Grids\Components\Laravel5\Pager;
 use Nayjest\Grids\Components\OneCellRow;
@@ -28,11 +33,11 @@ use Nayjest\Grids\Components\TFoot;
 use Nayjest\Grids\Components\THead;
 use Nayjest\Grids\Components\TotalsRow;
 use Nayjest\Grids\DbalDataProvider;
-use Nayjest\Grids\EloquentDataProvider;
 use Nayjest\Grids\FieldConfig;
 use Nayjest\Grids\FilterConfig;
 use Nayjest\Grids\Grid;
 use Nayjest\Grids\GridConfig;
+use Nayjest\Grids\ObjectDataRow;
 
 class PostIndexController extends Controller
 {
@@ -54,13 +59,18 @@ class PostIndexController extends Controller
                 'p.id as pid',
                 'title',
                 'picture',
-                'name',
+                'c.name as cname',
                 'preview_text',
                 'status',
+                'tag',
+                'u.name as uname',
             ])
             ->from("posts","p")
-            ->join("p","post_category","pc","p.id = pc.post_id")        
-            ->join("pc","categories","c","pc.cat_id = c.id")
+            ->leftjoin("p","post_category","pc","p.id = pc.post_id")        
+            ->leftjoin("pc","categories","c","pc.cat_id = c.id")
+            ->leftjoin("p","post_tag","pt","pt.post_id = p.id")
+            ->leftjoin("pt","tags","t","pt.tag_id = t.id")
+            ->join("p","users","u","p.user_id = u.id")
             ->groupby('p.id');        
         $grid =  $this->getGrid($query);
         $objItems = $this->objmPost->getItems();
@@ -72,9 +82,11 @@ class PostIndexController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Category $objCatIndex,TagsIndex $objmTagsIndex)
     {
-        return  view('admin.post.add');
+        $objCatItems = $objCatIndex->getItems();
+        $objTagsItems = $objmTagsIndex->getItems();
+        return  view('admin.post.add',compact('objCatItems','objTagsItems'));
     }
 
     /**
@@ -83,12 +95,17 @@ class PostIndexController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(PostRequest $request)
+    public function store(PostRequest $request,PostCategoryIndex $objmPostCategoryIndex,PostTagIndex $objmPostTagsIndex)
     {
+
+        $arCatID = $request->cat_id;
+        $arTagsID = $request->tags;
         $arItem = [
-            'title' => trim($request->name),
-            'preview_text' => trim($request->preview_text),
-            'cat_id' => trim($request->cat_id)
+            'title'         => trim($request->name),
+            'status'        => trim($request->status),
+            'preview_text'  => trim($request->preview_text),
+            'content'       => trim($request->content),
+            'user_id'       => Auth::id(),
         ];
         if (!empty($request->picture)) {
             if (Input::hasFile('picture')) {
@@ -98,7 +115,9 @@ class PostIndexController extends Controller
                 $arItem['picture'] = $fileName;
             }
         }
-        if($this->objmPost->addItem($arItem)) {
+        if( $id = $this->objmPost->addItem($arItem)) {
+            $objmPostCategoryIndex->addItem($arCatID,$id);
+            $objmPostTagsIndex->addItem($arTagsID,$id);
             return redirect()->route('post.index')->with('msg','Thêm thành công');
         } else {
             return redirect()->back()->with('msg-er','Có lỗi xảy ra');
@@ -123,10 +142,20 @@ class PostIndexController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit($id,Category $objCatIndex,TagsIndex $objmTagsIndex)
     {
+        $objCatItems = $objCatIndex->getItems();
+        $objTagsItems = $objmTagsIndex->getItems();
         $old_item = PostIndex::find($id);
-        return  view('admin.post.edit',compact('old_item'));
+        $old_arCat = [];
+        $old_arTags = [];
+        foreach ($old_item->categories as $category) {
+            $old_arCat[] = $category->id;
+        }
+        foreach ($old_item->tags as $tag) {
+            $old_arTags[] = $tag->id;
+        }
+        return  view('admin.post.edit',compact('old_item','objCatItems','old_arCat','old_arTags','objTagsItems'));
     }
 
     /**
@@ -136,13 +165,16 @@ class PostIndexController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(PostRequest $request,$id)
+    public function update(PostRequest $request,$id,PostCategoryIndex $objmPostCategoryIndex,PostTagIndex $objmPostTagsIndex)
     {
         $objItemOld = PostIndex::find($id);
+        $arCatID = $request->cat_id;
+        $arTagsID = $request->tags;
         $arItem = [
-            'title' => trim($request->name),
-            'preview_text' => trim($request->preview_text),
-            'cat_id' => trim($request->cat_id)
+            'title'         => trim($request->name),
+            'status'        => trim($request->status),
+            'preview_text'  => trim($request->preview_text),
+            'content'       => trim($request->content),
         ];
         if (Input::hasFile('picture')) {
             $file =  Input::file('picture');
@@ -158,6 +190,10 @@ class PostIndexController extends Controller
             if ( !empty($objItemOld->picture) && isset($fileName) ) {
                 Storage::delete("public/media/files/posts/" . $objItemOld->picture);
             }
+            $objmPostCategoryIndex->delItem($id);
+            $objmPostCategoryIndex->addItem($arCatID,$id);
+            $objmPostTagsIndex->delItem($id);
+            $objmPostTagsIndex->addItem($arTagsID,$id);
             return redirect()->route('post.index')->with('msg','Sửa thành công');
         } else {
             return redirect()->back()->with('msg-er','Có lỗi xảy ra');
@@ -189,6 +225,27 @@ class PostIndexController extends Controller
         }
         
     }
+    public function status(Request $request)
+    {
+        $post_id = $request->post_id;
+        $post = PostIndex::find($post_id);
+        if(!empty($post)){
+            $status = $post->status;
+            if( !empty($status) ) {
+                $this->objmPost->changeStatus($post_id,0);
+                return '<i class="fa fa-fw fa-times-circle" style="font-size: 20px; color: red"></i>';
+            } else {
+                $this->objmPost->changeStatus($post_id,1);
+                return '<i class="fa fa-fw fa-check-circle" style="font-size: 20px; color: green"></i>';
+            }
+        }        
+    }
+    public function searchTags(Request $request,TagsIndex $objmTagsIndex)
+    {
+        $search = $request->search;
+        $Items =  $objmTagsIndex->getItemsBySearch($search);
+        return response()->json(['items'=>$Items]);
+    }
     public function getGrid($query)
     {
         $query;
@@ -203,7 +260,7 @@ class PostIndexController extends Controller
                     ->setName('pid')
                     ->setLabel('ID')
                     ->setSortable(true)
-                    ->setSorting(Grid::SORT_ASC)
+                    ->setSorting(Grid::SORT_DESC)
                     ->addFilter(
                         (new FilterConfig)
                             ->setName('p.id')
@@ -225,17 +282,35 @@ class PostIndexController extends Controller
                 ,
                 
                 (new FieldConfig)
-                    ->setName('pid')
+                    ->setName('cname')
                     ->setLabel('Danh mục')
-                    ->setCallback(function ($val) {
-                        $cat = $this->getCategory($val);
+                    ->setCallback(function ($val,ObjectDataRow $row) {
+                        $data = $row->getSrc();  
+                        $cat = $this->getCategory($data->pid);
                         return '<p>'.$cat.'</p>';
                     })
                     ->addFilter(
                         (new FilterConfig)
-                            ->setName('name')
+                            ->setName('c.name')
                             ->setOperator(FilterConfig::OPERATOR_LIKE)
                     )                    
+                ,
+                (new FieldConfig)
+                    ->setName('tag')
+                    ->setWidth('130px')
+                    ->setLabel('Tags')
+                    ->setSortable(true)
+                    ->setSorting(Grid::SORT_ASC)
+                    ->setCallback(function ($val,ObjectDataRow $row) {
+                        $data = $row->getSrc();
+                        $tags = $this->getTagsPost($data->pid);
+                        return '<p>'.$tags.'</p>';
+                    })
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('tag')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )   
                 ,
                 (new FieldConfig)
                     ->setName('picture')
@@ -253,13 +328,23 @@ class PostIndexController extends Controller
                     )
                 ,
                 (new FieldConfig)
+                    ->setName('uname')
+                    ->setLabel('Editor')
+                    ->addFilter(
+                        (new FilterConfig)
+                            ->setName('u.name')
+                            ->setOperator(FilterConfig::OPERATOR_LIKE)
+                    )
+                ,
+                (new FieldConfig)
                     ->setName('status')
                     ->setWidth('130px')
                     ->setLabel('Trạng thái')
                     ->setSortable(true)
                     ->setSorting(Grid::SORT_ASC)
-                    ->setCallback(function ($val) {
-                        $html = !empty($val)? '<a href="javascript:void(0)"><i class="fa fa-fw fa-check-circle" style="font-size: 20px; color: green"></i></a>' : '<a href="javascript:void(0)"><i class="fa fa-fw fa-times-circle" style="font-size: 20px; color: red"></i></a>';
+                    ->setCallback(function ($val, ObjectDataRow $row) {
+                        $data = $row->getSrc();  
+                        $html = !empty($val)? '<a href="javascript:void(0)" onclick="changeStatus('.$data->pid.')" id="stt'.$data->pid.'"><i class="fa fa-fw fa-check-circle" style="font-size: 20px; color: green"></i></a>' : '<a href="javascript:void(0)" onclick="changeStatus('.$data->pid.')" id="stt'.$data->pid.'"><i class="fa fa-fw fa-times-circle" style="font-size: 20px; color: red"></i></a>';
                         return $html;
                     })  
                 ,
@@ -330,9 +415,24 @@ class PostIndexController extends Controller
     
     public function getCategory($post_id){
         $post = PostIndex::find($post_id);
+        $html = '';
         foreach ($post->categories as $category) {
             $arCat[] = $category->name;
+            $c = $category->name;
+            $html .= '<span class="label label-primary" title="'.$c.'">'.str_limit($c,20).'</span><br>';
         }
-        return !empty($arCat)? implode(',', $arCat) : ''; 
+        // return !empty($arCat)? implode(', ', $arCat) : ''; 
+        return !empty($html)? $html : ''; 
+    }    
+    public function getTagsPost($post_id){
+        $post = PostIndex::find($post_id);
+        $html = '';
+        foreach ($post->tags as $tag) {
+            $arTags[] = $tag->tag;
+            $t = $tag->tag;
+            $html .= '<span class="label label-success" title="'.$t.'">'.str_limit($t,10).'</span> ';
+        }
+        // return !empty($arTags)? implode(', ', $arTags) : ''; 
+        return !empty($html)? $html : ''; 
     }
 }

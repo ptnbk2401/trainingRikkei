@@ -41,4 +41,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany('App\Model\User\GroupIndex', 'user_group', 'user_id', 'group_id');
     }
+    public function posts()
+    {
+        return $this->hasMany('App\Model\Post\PostIndex','user_id');;
+    }
 }

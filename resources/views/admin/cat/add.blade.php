@@ -37,11 +37,17 @@
               <div class="col-sm-8">
                  <input type="text" name="name" id="name" class="form-control" value="{{ old('name') }}">
               </div>
+         </div>
+          <div class="form-group">
+             <label for="sort" class="col-sm-2 control-label">Sắp xếp</label>
+              <div class="col-sm-8">
+                 <input type="number" name="sort" id="sort" class="form-control" value="{{ old('sort',100) }}">
+              </div>
          </div> 
         </div>         
         <div class="box-footer text-center ">
             <button type="submit" class="btn btn-success">Save</button>
-            <a href="{{ route('post.index') }}" class="btn btn-primary" onclick="return confirm('Các thay đổi chưa được lưu. Tiếp tục?') ">Back</a>
+            <a href="{{ route('cat.index') }}" class="btn btn-primary" onclick="return confirm('Các thay đổi chưa được lưu. Tiếp tục?') ">Back</a>
         </div>         
     </form>
       

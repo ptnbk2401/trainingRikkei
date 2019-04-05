@@ -118,22 +118,26 @@ return [
             'text'        => 'Blog',
             'icon'        => 'book',
             'label_color' => 'success',
-            'active'      => ['/admin/post*','/admin/cat*'],
             'submenu' => [
                 [
-                    'text' => 'Danh sách',
+                    'text' => 'Bài viết',
                     'url'  => '/admin/post',
-                    'active'    => ['/admin/post'],
+                    'active'    => ['/admin/post*'],
                 ],
-                [
-                    'text'      => 'Thêm bài viết',
-                    'url'       => '/admin/post/create',
-                    'active'    => ['/admin/post/create'],
-                ],
+                // [
+                //     'text'      => 'Thêm bài viết',
+                //     'url'       => '/admin/post/create',
+                //     'active'    => ['/admin/post/create'],
+                // ],
                 [
                     'text'      => 'Danh mục',
                     'url'       => '/admin/cat',
-                    'active'    => ['/admin/cat'],
+                    'active'    => ['/admin/cat*'],
+                ],
+                [
+                    'text'      => 'Tags',
+                    'url'       => '/admin/tags',
+                    'active'    => ['/admin/tags*'],
                 ],
             ]
         ],

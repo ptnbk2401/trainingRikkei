@@ -46,10 +46,12 @@ class CategoryController extends Controller
     {
         $v = Validator::make($request->all(), [
             'name' => 'required|unique:categories|max:255',
+            'sort' => 'required',
         ],[
             'name.required' =>'Nhập tên danh mục',
             'name.max'      =>'Nhập tên danh mục không quá :max ký tự',
             'name.unique'   => 'Tên danh mục đã tồn tại',
+            'sort.required' => 'Nhập sắp xếp',
         ]);
 
         if ($v->fails())
@@ -59,6 +61,7 @@ class CategoryController extends Controller
 
         $arItem = [
             'name' => trim($request->name),
+            'sort' => trim($request->sort)
         ];
         
         if($this->objCatIndex->addItem($arItem)) {
@@ -103,11 +106,13 @@ class CategoryController extends Controller
         $old_item = Category::find($id);
         $unique = ( $old_item->name != trim($request->name) )? '|unique:categories' : '';
         $v = Validator::make($request->all(), [
-            'name' => 'required|max:255',
+            'name' => 'required|max:255'.$unique,
+            'sort' => 'required',
         ],[
             'name.required' =>'Nhập tên danh mục',
             'name.max'      =>'Nhập tên danh mục không quá :max ký tự',
             'name.unique'   => 'Tên danh mục đã tồn tại',
+            'sort.required' => 'Nhập sắp xếp',
         ]);
 
         if ($v->fails())
@@ -117,6 +122,7 @@ class CategoryController extends Controller
 
         $arItem = [
             'name' => trim($request->name),
+            'sort' => trim($request->sort)
         ];
         if($this->objCatIndex->editItem($arItem,$id)) {
             return redirect()->route('cat.index')->with('msg','Sửa thành công');
@@ -148,12 +154,12 @@ class CategoryController extends Controller
     }
     public function search(Request $request)
     {
-        if(!empty($request->search)) {
-            $search = trim($request->search);
+        if(!empty($request->cat_search)) {
+            $search = trim($request->cat_search);
             $objItems = $this->objCatIndex->getItemsBySearch($search);
             return view('admin.cat.index',compact('objItems'));
         } else {
-            return redirect()->route('post.index');
+            return redirect()->route('cat.index');
         }
         
     }

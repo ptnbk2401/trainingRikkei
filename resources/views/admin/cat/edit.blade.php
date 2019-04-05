@@ -38,7 +38,13 @@
               <div class="col-sm-8">
                  <input type="text" name="name" id="name" class="form-control" value="{{ old('name',$old_item->name) }}">
               </div>
-         </div> 
+         </div>
+         <div class="form-group">
+             <label for="sort" class="col-sm-2 control-label">Sắp xếp</label>
+              <div class="col-sm-8">
+                 <input type="number" name="sort" id="sort" class="form-control" value="{{ old('sort',$old_item->sort) }}">
+              </div>
+         </div>  
         </div>         
         <div class="box-footer text-center ">
             <button type="submit" class="btn btn-success">Save</button>

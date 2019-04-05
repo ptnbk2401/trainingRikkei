@@ -44,5 +44,30 @@
             $('#delete-form').submit();
         }
     }
+    ajax_sendding = false;
+    function changeStatus(post_id) {
+        if (ajax_sendding == true){
+            alert('Vui lòng chờ trong giây lát!');
+            return false;
+        }
+        ajax_sendding = true;
+        $('#stt'+post_id).html('<i class="fa fa-fw fa-spinner" style="font-size: 20px; color: blue"></i>');
+        $.ajax({
+            url: "{{ route('post.status') }}",
+            type: 'GET',
+            cache: false,
+            data: {post_id:post_id},
+            success: function(data){
+               $('#stt'+post_id).html(data);
+            },
+            error: function (){
+                alert('Có lỗi xảy ra');
+            }
+        }).always(function(){
+            ajax_sendding = false;
+        });
+        return false;
+        // alert(tags);
+    }
 </script>
 @stop
